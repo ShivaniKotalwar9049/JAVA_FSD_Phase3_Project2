@@ -1,0 +1,1080 @@
+//Account Pojo
+
+package com.example.demo;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+
+import lombok.Data;
+
+@Data
+@Entity
+public class AccountPojo {
+	
+	@Id
+	int id;
+	String AccountNumber;
+	String AccountHolderName;
+	String Password;
+	int balance;
+	
+
+}
+
+//Account repo
+
+
+package com.example.demo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface AccountRepo extends JpaRepository<AccountPojo, Integer>{
+
+}
+
+
+//AdminDAO
+
+package com.example.demo;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+
+public class AdminDAO {
+	
+	@Autowired
+	AdminRepo ar;
+	public List<AdminPojo> getall() {
+		// TODO Auto-generated method stub
+		
+			return ar.findAll();
+		
+	}
+
+}
+
+
+//AdminPojo
+
+package com.example.demo;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+
+import lombok.Data;
+
+@Data
+@Entity
+public class AdminPojo {
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	int UserId;
+	
+	String UserName;
+	String Password;
+}
+
+
+
+
+//AdminRepo
+
+package com.example.demo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+public interface AdminRepo extends JpaRepository<AdminPojo, Integer> {
+
+	
+
+}
+
+
+
+//dbservice
+
+package com.example.demo;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+
+
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+
+
+@Service
+public class dbservice {
+	
+	
+	@Autowired
+	ShoeRepo dr;
+	private String Folder_Path="C:\\Users\\Admin\\Documents\\workspace-spring-tool-suite-4-4.17.1.RELEASE\\JAVA_FSD_Phase3_Project2\\src\\main\\webapp\\images\\";
+	
+	public String uploadImage(MultipartFile file) throws IOException
+	{
+		ShoePojo s=new ShoePojo();
+		String fileinfo=Folder_Path+file.getOriginalFilename();
+		s.setFilepath(fileinfo);
+		ShoePojo response=dr.save(s);
+		file.transferTo(new File(fileinfo) );
+		if(response!=null)
+		{
+			return "The Shoe added successfully in system";
+		}
+		else
+		return null;
+	}
+	
+	public List<ShoePojo> download()
+	{
+		List<ShoePojo> sd=new ArrayList<ShoePojo>();
+		sd=dr.findAll();
+		return sd;
+	}
+	
+	public byte[] seperate(String filepath) throws IOException
+	{
+		
+		byte[] image=Files.readAllBytes(new File(filepath).toPath());
+		
+		return image;
+	}
+
+}
+
+
+
+
+//ImageUtil
+
+package com.example.demo;
+
+import java.io.ByteArrayOutputStream;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
+
+import org.hibernate.type.descriptor.java.UUIDTypeDescriptor.ToBytesTransformer;
+
+public class ImageUtil {
+	
+	//compress an image -util.zip.deflater
+	
+	public static byte[] compress(byte[] data)
+	{
+		Deflater deflater=new Deflater();
+		deflater.setLevel(Deflater.BEST_COMPRESSION);
+		deflater.setInput(data);
+		deflater.finish();
+		
+		ByteArrayOutputStream out=new ByteArrayOutputStream(data.length);
+		byte[] temp=new byte[1024*4];
+		
+		while(!deflater.finished())
+		{
+			int size=deflater.deflate(temp);
+			out.write(temp,0,size);
+		}
+		return out.toByteArray();
+		
+	}
+
+	
+	public static byte[] decompress(byte[] data) throws DataFormatException
+	{
+		Inflater inflater=new Inflater();
+		inflater.setInput(data);
+		ByteArrayOutputStream out=new ByteArrayOutputStream(data.length);
+		byte[] temp=new byte[1024*4];
+		while(!inflater.finished())
+		{
+			int size=inflater.inflate(temp);
+			out.write(temp,0,size);
+		}
+		return out.toByteArray();
+	}
+}
+
+
+
+
+//Mani controller
+
+package com.example.demo;
+
+import java.util.List;
+
+import java.util.logging.Logger;
+
+
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.ModelAndView;
+
+@Controller
+public class MainController {
+	
+	@Autowired
+	UserDAO dao;
+	
+	@Autowired
+	dbservice service;
+	
+	@Autowired
+	ShoeRepo sr;
+	
+	@Autowired
+	AdminRepo ar;
+	
+	@Autowired
+	AccountRepo arp;
+	
+	@RequestMapping("/")
+	public ModelAndView displaypage(HttpServletRequest request,HttpServletResponse response) {
+		ModelAndView mv=new ModelAndView();
+		mv.setViewName("Index.jsp");
+		return mv;
+	}
+	
+	@RequestMapping("/InsertUser")
+	public ModelAndView InsertUser(HttpServletRequest request, HttpServletResponse response)
+	{
+		ModelAndView mv=new ModelAndView();
+		UserPojo u=new UserPojo();
+		u.setUserName(request.getParameter("UserName"));
+		u.setPassword(request.getParameter("Password"));
+		UserPojo up=dao.insert(u);
+		System.out.println(up);
+		if(up!=null)
+		{
+			mv.setViewName("Index.jsp");
+		}
+		return mv;
+	}
+	
+
+	
+	@RequestMapping("/LoginCheck")
+	public ModelAndView LoginCheck(HttpServletRequest request, HttpServletResponse response)
+	{
+		ModelAndView mv=new ModelAndView();
+		boolean b=false;
+		
+		List<UserPojo> list=dao.getall();
+		
+		System.out.println(list);
+		
+		for(UserPojo u:list)
+		{
+			if(u.getUserName().equals(request.getParameter("UserName"))==true && u.getPassword().equals(request.getParameter("Password"))==true)
+			{
+				b=true;
+			}
+		}
+		System.out.println(b);
+		if(b==true)
+		{
+			
+			List<ShoePojo> list1=sr.findAll();
+			mv.setViewName("ShoeList.jsp");
+			mv.addObject("list",list1);
+		}
+		else
+		{
+			mv.setViewName("LoginFailed.jsp");
+			
+		}
+		
+		
+		return mv;
+	}
+	
+	
+	@RequestMapping("/AdminLoginCheck")
+	public ModelAndView AdminLoginCheck(HttpServletRequest request, HttpServletResponse response)
+	{
+		ModelAndView mv=new ModelAndView();
+		boolean b=false;
+		AdminDAO da=new AdminDAO();
+		List<AdminPojo> list=ar.findAll();
+		
+		System.out.println(list);
+		
+		for(AdminPojo u:list)
+		{
+			if(u.getUserName().equals(request.getParameter("UserName"))==true && u.getPassword().equals(request.getParameter("Password"))==true)
+			{
+				b=true;
+			}
+		}
+		System.out.println(b);
+		if(b==true)
+		{
+			
+			List<ShoePojo> list1=sr.findAll();
+			mv.setViewName("AdminShoeList.jsp");
+			mv.addObject("list",list1);
+		}
+		else
+		{
+			mv.setViewName("LoginFailedAdmin.jsp");
+		}
+		
+		
+		return mv;
+	}
+	
+	Logger log=Logger.getAnonymousLogger();
+	private String Folder_Path="C:\\Users\\Admin\\Documents\\workspace-spring-tool-suite-4-4.17.1.RELEASE\\JAVA_FSD_Phase3_Project2\\src\\main\\webapp\\images\\";
+	@RequestMapping("/AddShoe")
+	public ModelAndView AddShoe(HttpServletRequest request,HttpServletResponse response, @RequestParam("file") MultipartFile file)  {
+		ModelAndView mv=new ModelAndView();
+		ShoePojo data=new ShoePojo();
+		data.setName(file.getOriginalFilename());
+		data.setDescription(request.getParameter("desc"));
+		data.setShoename(request.getParameter("shoename"));
+		data.setPrice(Integer.parseInt(request.getParameter("price")));
+		String fileinfo=Folder_Path+file.getOriginalFilename();
+		data.setFilepath(fileinfo);
+		ShoePojo s1=sr.save(data);
+		mv.setViewName("ShoeAddedSuccess.jsp");
+		return mv;
+	}
+	
+	@RequestMapping("/getShoe")
+	public ModelAndView getall()
+	{
+		ModelAndView mv=new ModelAndView();
+		
+		List<ShoePojo> list=sr.findAll();
+		mv.setViewName("ShoeList.jsp");
+		mv.addObject("list",list);
+		return mv;
+	}
+	@RequestMapping("/getShoeforAdmin")
+	public ModelAndView getShoeforAdmin()
+	{
+		ModelAndView mv=new ModelAndView();
+		
+		List<ShoePojo> list=sr.findAll();
+		mv.setViewName("AdminShoeList.jsp");
+		mv.addObject("list",list);
+		return mv;
+	}
+
+	@RequestMapping("/deleteshoe")
+	public ModelAndView deleteshoe(HttpServletRequest request,HttpServletResponse response)  {
+		ModelAndView mv=new ModelAndView();
+		sr.deleteById(Integer.parseInt(request.getParameter("id")));
+		mv.setViewName("ShoeDeletedSuccess.jsp");
+		return mv;
+	}
+	
+	
+	@RequestMapping("/accountcheck")
+	public ModelAndView accountcheck(HttpServletRequest request, HttpServletResponse response)
+	{
+		ModelAndView mv=new ModelAndView();
+		boolean b=false;
+		
+		List<AccountPojo> list=arp.findAll();
+		
+		System.out.println(list);
+		
+		for(AccountPojo u:list)
+		{
+			if(u.getAccountNumber().equals(request.getParameter("AccountNumber"))==true && u.getAccountHolderName().equals(request.getParameter("AccountHolderName"))==true && u.getPassword().equals(request.getParameter("Password"))==true)
+			{
+				if(Integer.parseInt(request.getParameter("price"))<u.getBalance())
+				{
+					b=true;
+					int temp=u.getBalance()-Integer.parseInt(request.getParameter("price"));
+					u.setBalance(temp);
+					arp.save(u);
+					mv.setViewName("SuccessfulBuy.jsp");
+					break;
+				}
+				
+				else
+				{
+					mv.setViewName("LowBalance.jsp");
+				}
+				
+			}
+			
+			
+		}
+		
+		if(b!=true)
+			{
+				mv.setViewName("WrongDetails.jsp");
+				mv.addObject("price", request.getParameter("price"));
+			}
+		
+		return mv;
+	}
+	
+	
+	
+
+}
+
+
+
+//Shoepojo
+package com.example.demo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+public interface ShoeRepo extends JpaRepository<ShoePojo, Integer> {
+
+
+}
+
+
+
+//USERDAO
+
+
+package com.example.demo;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+@Service
+public class UserDAO {
+
+	@Autowired
+	UserRepo ur;
+	public UserPojo insert(UserPojo u) {
+		
+		
+		return ur.save(u);
+	}
+	public List<UserPojo> getall() {
+		// TODO Auto-generated method stub
+		
+			return ur.findAll();
+		
+	}
+	
+	
+
+}
+
+
+
+
+//UserPojo
+
+package com.example.demo;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+
+import lombok.Data;
+
+@Entity
+@Data
+public class UserPojo {
+	
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	int UserId;
+	
+	String UserName;
+	String Password;
+
+}
+
+
+
+
+//UserRepo
+
+
+package com.example.demo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+@Repository
+public interface UserRepo extends JpaRepository<UserPojo, Integer> {
+
+}
+
+
+
+
+
+//Main application
+
+package com.example.demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class JavaFsdPhase3Project2Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(JavaFsdPhase3Project2Application.class, args);
+	}
+
+}
+
+
+
+/Servlet initializer
+
+package com.example.demo;
+
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+
+public class ServletInitializer extends SpringBootServletInitializer {
+
+	@Override
+	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+		return application.sources(JavaFsdPhase3Project2Application.class);
+	}
+
+}
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////
+
+Pages
+
+
+//AccountDetails
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body background=
+"https://media.geeksforgeeks.org/wp-content/uploads/rk.png">
+<%int price=Integer.parseInt(request.getParameter("price")); %>
+<center>
+<h1>Please fill below details to buy the item</h1>
+<form action="accountcheck">
+<table>
+<tr><td>Account Number</td><td> <input type="text" name="AccountNumber"></td></tr><br>
+
+<tr><td>Account holder Name</td><td><input type="text" name="AccountHolderName"></td><br>
+
+<tr>
+
+<td>Account Password</td><td><input type="password" name="Password"></td>
+<td><input type="hidden" name="price" value="<%=price%>"></td>
+
+
+</tr>
+
+</table>
+<input type="submit">
+</form>
+
+
+<br>
+
+<img alt="Failed to load an image" src="/images/shoepng2.png" style="width: 250px; height: 250px;">
+
+</center>
+
+
+</body>
+</html>
+
+
+
+
+
+
+//addShoe
+
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body style="background-color:khaki;">
+<center>
+<form action="AddShoe" method="post" enctype="multipart/form-data"><br>
+
+
+
+
+<table>
+
+<tr><td>Name</td><td> <input type="text" name="shoename"><br></td><br></tr>
+<tr><td>Description</td><td> <input type="text" name="desc"><br></td><br></tr>
+<tr><td>Price</td><td> <input type="text" name="price"><br></td></tr>
+<tr><td>Upload the image of shoe here</td><td> <input type="file" name="file"><br></td></tr>
+
+
+
+</table>
+<input type="submit">
+</form>
+</center>
+</body>
+</html>
+
+
+
+
+
+//Admin Login
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body style="background-color:khaki;">
+<center>
+<h1>Welcome to Sporty shoes. Please login or Register</h1>
+<form action="AdminLoginCheck">
+<table>
+<tr><td>UserName</td><td> <input type="text" name="UserName"></td></tr><br>
+
+<tr><td>Password </td><td><input type="password" name="Password"></td></tr><br>
+</table>
+<br>
+<input type="submit"><br>
+<br>
+
+</form>
+
+</center>
+</body>
+</html>
+
+
+
+
+//AdminShoeList
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+     <%@ page import="java.util.*" %>
+    <%@ page import="com.example.demo.*" %>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+<%List<ShoePojo> list=(List<ShoePojo>)request.getAttribute("list");%>
+<table >
+<%for(ShoePojo s:list){ %>
+<form >
+
+<tr><td><%=s.getId()%></td><td><img alt="Failed to load an image" src="/images/<%=s.getName()%>" style="width: 100px; height: 100px;"></p></td><td><br><p><%=s.getShoename() %></p><p><%=s.getDescription()%></td><br></tr>
+
+</form>
+<%} %>
+</table>
+<br>
+<form action="addShoe.jsp">
+<input type="submit" value="Add Shoe">
+
+</form>
+<br>
+<form action="deleteshoe.jsp">
+<input type="submit" value="Delete Shoe">
+
+</form>
+
+</body>
+</html>
+
+
+
+
+//deleteshoe
+
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+
+<center>
+
+
+<table>
+<form action="deleteshoe"><br>
+
+Enter shoe id which you want to delete <input type="text" name="id"><br><br><br>
+<input type="submit">
+</form>
+</table>
+</center>
+
+</body>
+</html>
+
+
+
+
+//index.jsp
+
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Sporty Shoes</title>
+</head>
+<body style="background-color:khaki;">
+<center>
+<h1>Welcome to Sporty shoes. Please login or Register</h1>
+<form action="LoginCheck">
+<table>
+<tr><td>UserName</td><td> <input type="text" name="UserName"></td></tr><br>
+
+<tr><td>Password </td><td><input type="password" name="Password"></td></tr><br>
+</table>
+<br>
+<input type="submit"><br>
+<br>
+<a href="http://localhost:8081/UserRegistration.jsp">Register if account is not yet created</a>
+</form>
+
+</center>
+
+<center>
+<div>
+
+<form action="AdminLogin">
+<br>
+<br>
+<br>
+<a href="http://localhost:8081/AdminLogin.jsp">Click here for AdminLogin</a>
+</form>
+
+</div>
+</center>
+</body>
+</html>
+
+
+
+
+//LoginFailed
+
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body style="background-color:khaki;">
+<h1>UserId or password you have entered is not correct. Please enter correct details or register.</h1>
+<form action="Index.jsp">
+
+<input type="submit" value="Click here to go to login page">
+
+</form>
+</body>
+</html>
+
+
+
+
+//Login failed admin
+
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body style="background-color:khaki;">
+<h1>UserId or password you have entered is not correct. Please enter correct details or register.</h1>
+<form action="AdminLogin.jsp">
+
+<input type="submit" value="Click here to go to login page">
+
+</form>
+</body>
+</html>
+
+
+
+
+
+//Low balance
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+<h3>Sorry, but your account balance is low to purchase this item</h3>
+<input type="submit" value="Click here to go back and check other items">
+</body>
+</html>
+
+
+//ShoeAdded success
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+<h1>Shoe added successfully.</h1>
+<form action="getShoeforAdmin">
+<input type="submit" value="Click here to go back">
+</form>
+
+</body>
+</html>
+
+
+
+
+//ShoeDeleteSuccess
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+
+<style>
+p {
+  background-image: url('shoeone.jpg');
+}
+</style>
+<center>
+<h1>Shoe Deleted successfully</h1>
+
+
+<form action="getShoeforAdmin">
+<input type="submit" value="Click here to go back">
+</form>
+
+</center>
+</body>
+</html>
+
+
+
+
+//Shoe List
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+    <%@ page import="java.util.*" %>
+    <%@ page import="com.example.demo.*" %>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body background=
+"https://media.geeksforgeeks.org/wp-content/uploads/rk.png">
+<h1><i>Hi there, please have fun shopping.</i></h1>
+
+<%List<ShoePojo> list=(List<ShoePojo>)request.getAttribute("list");%>
+<%for(ShoePojo s:list){ %>
+<form action="AccountDetails.jsp" method="get">
+<table>
+
+<tr>
+
+<td><img alt="Failed to load an image" src="/images/<%=s.getName()%>" style="width: 100px; height: 100px;"></p></td><td><br><p>&nbsp&nbsp&nbsp&nbsp<%=s.getShoename() %></h3></h3></p><p>&nbsp&nbsp&nbsp&nbsp<%=s.getDescription()%></td>
+<td>
+
+
+<input type="hidden" name="price" value="<%=s.getPrice()%>">
+
+<input type="submit" value="Buy">
+
+
+</form>
+</td>
+</tr>
+
+
+</table>
+
+<%} %>
+
+</body>
+</html>
+
+
+
+//Successful buy
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+<h2>You have purchased the product successfully</h2>
+<form action="getShoe">
+<input type="submit" value="Click here to go back">
+</form>
+</body>
+</html>
+
+
+
+
+//Successful user login
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>User Login Successful</title>
+</head>
+
+<body background=
+"https://media.geeksforgeeks.org/wp-content/uploads/rk.png">
+<h1><i>Hi there, please have fun shopping</i></h1>
+
+</body>
+</html>
+
+
+
+
+
+//User regstration
+
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+
+<style>
+.content{
+max-width: 500px;
+margin:auto;
+}
+</style>
+
+
+<body style="background-color:khaki;">
+
+<div class="content">
+<center>
+<form action="InsertUser">
+
+<table>
+<tr><td>UserName</td><td> <input type="text" name="UserName"></td></tr><br>
+
+<tr><td>Password </td><td><input type="password" name="Password"></td></tr><br>
+</table>
+<input type="submit">
+
+</center>
+</div>
+</form>
+</body>
+</html>
+
+
+
+
+
+//Wrong Details
+
+<%@ page language="java" contentType="text/html; charset=ISO-8859-1"
+    pageEncoding="ISO-8859-1"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+<form action="getShoeforAdmin">
+<input type="hidden" value="price">
+<input type="submit" value="Click here to go back">
+</form>
+</body>
+</html>
